@@ -22,13 +22,13 @@ def merge_html_files(in_path, out_path):
 
     first_file = BeautifulSoup("".join(open(paths[0])), features="html.parser")
 
-    first_file.find('link').decompose()
+    first_file.find("link").decompose()
 
     with open(os.path.join(assets_dir_path, "style.css"), "r") as f:
         content = f.read()
 
         head = first_file.head
-        head.append(first_file.new_tag('style', type='text/css'))
+        head.append(first_file.new_tag("style", type="text/css"))
         head.style.append(content)
 
     h = first_file.find("h1")
@@ -126,7 +126,7 @@ def get_checkbox_value(root_soap, cb_type):
 def get_html_files(path):
     onlyfiles = []
 
-    for p in pathlib.Path(path).rglob('*.html'):
+    for p in pathlib.Path(path).rglob("*.html"):
         res = str(p.absolute())
         if "merged.html" in res:
             continue
@@ -142,7 +142,7 @@ def get_html_files(path):
 def get_assets_path(path):
     res = None
 
-    for p in pathlib.Path(path).rglob('assets'):
+    for p in pathlib.Path(path).rglob("assets"):
         return str(p.absolute())
 
     return res
