@@ -6,10 +6,10 @@ build: check
 
 _build: clean
 	@echo "Publishing"
-	vmn show ${EXTRA_SHOW_ARGS} --verbose pytest_html_merger > src/ver.yml
+	vmn show ${EXTRA_SHOW_ARGS} --verbose pytest_html_merger > ${NAME}/ver.yml
 	python3 ${PWD}/gen_ver.py
 	python3 setup.py sdist bdist_wheel
-	git checkout -- ${PWD}/src/version.py
+	git checkout -- ${PWD}/${NAME}/version.py
 
 upload:
 	twine upload ${PWD}/dist/*
@@ -51,6 +51,6 @@ check:
 	@echo "-------------------------------------------------------------"
 
 clean:
-	git checkout -- ${PWD}/src/version.py
+	git checkout -- ${PWD}/${NAME}/version.py
 	rm -rf ${PWD}/dist
 	rm -rf ${PWD}/build

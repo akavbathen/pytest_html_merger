@@ -1,6 +1,6 @@
 import setuptools
 
-from src import version
+from pytest_html_merger import version
 
 description = "Pytest HTML reports merging utility"
 
@@ -17,8 +17,10 @@ setuptools.setup(
     python_requires=">=3.6.0",
     url="https://github.com/akavbathen/pytest_html_merger.git",
     install_requires=install_requires,
-    package_dir={"pytest_html_merger": "src"},
+    package_dir={"pytest_html_merger": "pytest_html_merger"},
     packages=["pytest_html_merger"],
-    entry_points={"console_scripts": ["pytest_html_merger = src.main:main"]},
+    entry_points={
+        "console_scripts": ["pytest_html_merger = pytest_html_merger.main:main"]
+    },
     include_package_data=True,
 )
