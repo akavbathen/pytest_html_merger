@@ -22,7 +22,10 @@ def merge_html_files(in_path, out_path):
 
     first_file = BeautifulSoup("".join(open(paths[0])), features="html.parser")
 
-    first_file.find("link").decompose()
+    try:
+        first_file.find("link").decompose()
+    except:
+        pass
 
     with open(os.path.join(assets_dir_path, "style.css"), "r") as f:
         content = f.read()
