@@ -18,6 +18,9 @@ CHECKBOX_REGEX = r"^(?P<num>0|[1-9]\d*) (?P<txt1>.*)"
 
 def merge_html_files(in_path, out_path):
     paths = get_html_files(in_path)
+    if not paths:
+        raise RuntimeError(f"Was unable to find html files in {in_path}")
+
     assets_dir_path = get_assets_path(in_path)
 
     first_file = BeautifulSoup("".join(open(paths[0])), features="html.parser")
