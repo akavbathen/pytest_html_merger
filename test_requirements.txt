@@ -1,3 +1,4 @@
 PyYAML
 black
 twine
+wheel
