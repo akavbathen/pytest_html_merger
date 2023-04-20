@@ -20,7 +20,9 @@ def merge_html_files(in_path, out_path):
 
     assets_dir_path = get_assets_path(in_path)
 
-    first_file = BeautifulSoup("".join(open(paths[0], encoding='utf-8')), features="html.parser")
+    first_file = BeautifulSoup(
+        "".join(open(paths[0], encoding="utf-8")), features="html.parser"
+    )
 
     try:
         first_file.find("link").decompose()
@@ -41,25 +43,27 @@ def merge_html_files(in_path, out_path):
             head.append(first_file.new_tag("style", type="text/css"))
             head.style.append(content)
 
-    dataset = first_file.find('div', {'id': 'data-container'})
-    dataset_json = json.loads(dataset.attrs['data-jsonblob'])
-    dataset_json['title'] = os.path.basename(out_path)
+    dataset = first_file.find("div", {"id": "data-container"})
+    dataset_json = json.loads(dataset.attrs["data-jsonblob"])
+    dataset_json["title"] = os.path.basename(out_path)
 
     for path in paths:
         if path == paths[0]:
             continue
 
         second_file = BeautifulSoup(
-            "".join(open(path, encoding='utf-8')), features="html.parser")
-        res = second_file.find('div', {'id': 'data-container'})
-        dataset_json2 = res.attrs['data-jsonblob']
+            "".join(open(path, encoding="utf-8")), features="html.parser"
+        )
+        res = second_file.find("div", {"id": "data-container"})
+        dataset_json2 = res.attrs["data-jsonblob"]
         dataset_json2 = json.loads(dataset_json2)
-        dataset_json['tests'] = {
-            **dataset_json['tests'], **dataset_json2['tests']}
-        dataset_json['collectedItems'] += dataset_json2['collectedItems']
+        dataset_json["tests"] = {**dataset_json["tests"], **dataset_json2["tests"]}
+        dataset_json["collectedItems"] += dataset_json2["collectedItems"]
 
-    first_file.find('div', {'id': 'data-container'}).attrs['data-jsonblob'] = json.dumps(dataset_json)
-    with open(out_path, "w", encoding='utf-8') as f:
+    first_file.find("div", {"id": "data-container"}).attrs[
+        "data-jsonblob"
+    ] = json.dumps(dataset_json)
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(str(first_file))
 
 
@@ -71,7 +75,9 @@ def get_html_files(path):
         if "merged.html" in res:
             continue
 
-        tmp = BeautifulSoup("".join(open(res, encoding='utf-8')), features="html.parser")
+        tmp = BeautifulSoup(
+            "".join(open(res, encoding="utf-8")), features="html.parser"
+        )
         p = tmp.find("p")
         if p and "Report generated on " in p.text:
             onlyfiles.append(res)
