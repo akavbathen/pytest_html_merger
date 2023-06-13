@@ -10,7 +10,7 @@ CUR_PATH = "{0}/".format(os.path.dirname(__file__))
 
 sys.path.append(CUR_PATH)
 
-import version as version_mod
+import pytest_html_merger.version as version_mod
 
 
 CHECKBOX_REGEX = r"^(?P<num>0|[1-9]\d*) (?P<txt1>.*)"
