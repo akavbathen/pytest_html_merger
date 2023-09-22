@@ -17,7 +17,7 @@ CHECKBOX_REGEX = r"^(?P<num>0|[1-9]\d*) (?P<txt1>.*)"
 
 
 def merge_html_files(in_path, out_path):
-    paths = get_html_files(in_path)
+    paths = get_html_files(in_path, out_path)
     if not paths:
         raise RuntimeError(f"Was unable to find html files in {in_path}")
 
@@ -136,12 +136,14 @@ def get_checkbox_value(root_soap, cb_type):
     return int(gdict["num"]), gdict["txt1"]
 
 
-def get_html_files(path):
+def get_html_files(path, output_file_path):
     onlyfiles = []
+
+    output_file_path = os.path.abspath(output_file_path)
 
     for p in pathlib.Path(path).rglob("*.html"):
         res = str(p.absolute())
-        if "merged.html" in res:
+        if output_file_path in res:
             continue
 
         tmp = BeautifulSoup("".join(open(res)), features="html.parser")
