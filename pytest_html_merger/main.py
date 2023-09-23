@@ -1,9 +1,11 @@
+import json
 import re
 import argparse
 import os
 from bs4 import BeautifulSoup
 import sys
 import pathlib
+from packaging import version
 
 
 CUR_PATH = "{0}/".format(os.path.dirname(__file__))
@@ -24,6 +26,7 @@ def merge_html_files(in_path, out_path):
     assets_dir_path = get_assets_path(in_path)
 
     first_file = BeautifulSoup("".join(open(paths[0])), features="html.parser")
+    paths.pop(0)
 
     try:
         first_file.find("link").decompose()
@@ -47,7 +50,9 @@ def merge_html_files(in_path, out_path):
     h = first_file.find("h1")
     h.string = os.path.basename(out_path)
 
-    t = first_file.find("table", {"id": "results-table"})
+    ps = first_file.find_all("p")
+    pytest_version = ps[0].text.split(" ")[-1]
+    ps.pop(0)
 
     cb_types = {
         "passed": [0, ""],
@@ -58,51 +63,57 @@ def merge_html_files(in_path, out_path):
         "xpassed": [0, ""],
     }
 
+    html_ver = version.parse(pytest_version)
+    if html_ver >= version.parse("4.0.0"):
+        cb_types["rerun"] = [0, ""]
+
     for cb_type in cb_types:
-        tmp = get_checkbox_value(first_file, cb_type)
-        cb_types[cb_type][0] = tmp[0]
-        cb_types[cb_type][1] = tmp[1]
+        cb_val = get_checkbox_value(first_file, cb_type)
+        cb_types[cb_type][0] = cb_val[0]
+        cb_types[cb_type][1] = cb_val[1]
 
-    test_count = 0
-    dur = 0
-    ps = first_file.find_all("p")
-    for p in ps:
-        if " tests ran" in p.text:
-            tmp = p.text.split(" ")
-            test_count = int(tmp[0])
-            dur = float(tmp[4])
+    dur, test_count, fp = get_test_count_and_duration(ps, html_ver)
 
-            break
+    if html_ver < version.parse("4.0.0"):
+        t = first_file.find("table", {"id": "results-table"})
+    else:
+        f_json_blob = first_file.find(
+            'div',
+            {'id': 'data-container'}
+        ).get('data-jsonblob')
+        # Convert the JSON string into a dictionary
+        f_data_dict = json.loads(f_json_blob)
 
     for path in paths:
-        if path == paths[0]:
-            continue
+        cur_file = BeautifulSoup("".join(open(path)), features="html.parser")
 
-        second_file = BeautifulSoup("".join(open(path)), features="html.parser")
+        if html_ver < version.parse("4.0.0"):
+            tbody_res = cur_file.find_all("tbody", {"class": "results-table-row"})
+            for elm in tbody_res:
+                t.append(elm)
+        else:
+            f_json_blob = cur_file.find(
+                'div',
+                {'id': 'data-container'}
+            ).get('data-jsonblob')
+            # Convert the JSON string into a dictionary
+            c_data_dict = json.loads(f_json_blob)
 
-        res = second_file.find_all("tbody", {"class": "results-table-row"})
-        for elm in res:
-            t.append(elm)
+            f_data_dict["tests"].update(c_data_dict["tests"])
 
-        res = second_file.find_all("p")
-        for p in res:
-            if " tests ran" in p.text:
-                tmp = p.text.split(" ")
-                test_count += int(tmp[0])
-                dur += float(tmp[4])
-
-                break
+        p_res = cur_file.find_all("p")
+        _dur, _test_count, _ = get_test_count_and_duration(p_res, html_ver)
+        dur += _dur
+        test_count += _test_count
 
         for cb_type in cb_types:
-            tmp = get_checkbox_value(second_file, cb_type)
+            tmp = get_checkbox_value(cur_file, cb_type)
             cb_types[cb_type][0] += tmp[0]
 
-    res = first_file.find_all("p")
-    for p in res:
-        if " tests ran" in p.text:
-            p.string = f"{test_count} tests ran in {dur} seconds"
+        fp.string = f"{test_count} tests ran in {dur} seconds"
 
-            break
+    if html_ver >= version.parse("4.0.0"):
+        first_file.find('div', {'id': 'data-container'})['data-jsonblob'] = json.dumps(f_data_dict)
 
     for cb_type in cb_types:
         set_checkbox_value(first_file, cb_type, cb_types[cb_type])
@@ -110,6 +121,46 @@ def merge_html_files(in_path, out_path):
     with open(out_path, "w") as f:
         f.write(str(first_file))
 
+
+def get_test_count_and_duration(ps, html_ver):
+    test_count = 0
+    dur = 0
+    fp = None
+
+    for p in ps:
+        if html_ver >= version.parse("4.0.0"):
+            match = re.search(r"test.* took ", p.text)
+            if match:
+                tmp = p.text.split(" ")
+                test_count = int(tmp[0])
+
+                if "ms." in tmp:
+                    dur = int(tmp[3]) / 1000
+                else:
+                    hours, minutes, seconds = map(int, tmp[3][:-1].split(':'))
+                    dur = hours * 3600 + minutes * 60 + seconds
+
+                fp = p
+
+                break
+
+        if html_ver < version.parse("4.0.0") and " tests ran" in p.text:
+            tmp = p.text.split(" ")
+            test_count = int(tmp[0])
+            dur = float(tmp[4])
+            fp = p
+
+            break
+
+    return dur, test_count, fp
+
+
+def parse_results_3():
+    pass
+
+
+def parse_results_4():
+    pass
 
 def set_checkbox_value(root_soap, cb_type, val):
     elem = root_soap.find("span", {"class": cb_type})
