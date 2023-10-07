@@ -8,13 +8,14 @@ This utility will merge all of your `pytest` HTML reports into a single HTML rep
 `pip install pytest-html-merger`
 
 ### running
-pytest_html_merger [-h] [--version] [-i INPUT] [-o OUTPUT]
+pytest_html_merger [-h] [--version] [-i INPUT] [-o OUTPUT] [-t TITLE]
 
 optional arguments:
   -h, --help            show this help message and exit
   --version, -v         show program's version number and exit
   -i INPUT, --input INPUT
   -o OUTPUT, --output OUTPUT
+  -t TITLE, --title TITLE
 
 ### example
 `pytest_html_merger -i /path/to/your/html/reports -o /path/to/output/report/merged.html`
