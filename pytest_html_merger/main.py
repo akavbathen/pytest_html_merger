@@ -64,7 +64,7 @@ def merge_html_files(in_path, out_path):
     }
 
     html_ver = version.parse(pytest_version)
-    if html_ver >= version.parse("4.0.0"):
+    if html_ver >= version.parse("4.0.0rc"):
         cb_types["rerun"] = [0, ""]
 
     for cb_type in cb_types:
@@ -74,7 +74,7 @@ def merge_html_files(in_path, out_path):
 
     dur, test_count, fp = get_test_count_and_duration(ps, html_ver)
 
-    if html_ver < version.parse("4.0.0"):
+    if html_ver < version.parse("4.0.0rc"):
         t = first_file.find("table", {"id": "results-table"})
     else:
         f_json_blob = first_file.find(
@@ -87,7 +87,7 @@ def merge_html_files(in_path, out_path):
     for path in paths:
         cur_file = BeautifulSoup("".join(open(path)), features="html.parser")
 
-        if html_ver < version.parse("4.0.0"):
+        if html_ver < version.parse("4.0.0rc"):
             tbody_res = cur_file.find_all("tbody", {"class": "results-table-row"})
             for elm in tbody_res:
                 t.append(elm)
@@ -112,7 +112,7 @@ def merge_html_files(in_path, out_path):
 
         fp.string = f"{test_count} tests ran in {dur} seconds"
 
-    if html_ver >= version.parse("4.0.0"):
+    if html_ver >= version.parse("4.0.0rc"):
         first_file.find('div', {'id': 'data-container'})['data-jsonblob'] = json.dumps(f_data_dict)
 
     for cb_type in cb_types:
@@ -128,7 +128,7 @@ def get_test_count_and_duration(ps, html_ver):
     fp = None
 
     for p in ps:
-        if html_ver >= version.parse("4.0.0"):
+        if html_ver >= version.parse("4.0.0rc"):
             match = re.search(r"test.* took ", p.text)
             if match:
                 tmp = p.text.split(" ")
@@ -144,7 +144,7 @@ def get_test_count_and_duration(ps, html_ver):
 
                 break
 
-        if html_ver < version.parse("4.0.0") and " tests ran" in p.text:
+        if html_ver < version.parse("4.0.0rc") and " tests ran" in p.text:
             tmp = p.text.split(" ")
             test_count = int(tmp[0])
             dur = float(tmp[4])
