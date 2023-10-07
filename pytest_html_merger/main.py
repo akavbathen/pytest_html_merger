@@ -18,7 +18,7 @@ import pytest_html_merger.version as version_mod
 CHECKBOX_REGEX = r"^(?P<num>0|[1-9]\d*) (?P<txt1>.*)"
 
 
-def merge_html_files(in_path, out_path):
+def merge_html_files(in_path, out_path, title):
     paths = get_html_files(in_path, out_path)
     if not paths:
         raise RuntimeError(f"Was unable to find html files in {in_path}")
@@ -48,7 +48,7 @@ def merge_html_files(in_path, out_path):
             head.style.append(content)
 
     h = first_file.find("h1")
-    h.string = os.path.basename(out_path)
+    h.string = title or os.path.basename(out_path)
 
     ps = first_file.find_all("p")
     pytest_version = ps[0].text.split(" ")[-1]
@@ -233,6 +233,12 @@ def parse_user_commands(command_line):
         default=os.path.join(os.path.abspath(os.path.dirname(__file__)), "merged.html"),
         help="",
     )
+    parser.add_argument(
+        "-t",
+        "--title",
+        default=None,
+        help="",
+    )
 
     args = parser.parse_args(command_line)
 
@@ -242,7 +248,7 @@ def parse_user_commands(command_line):
 def main(command_line=None):
     args = parse_user_commands(command_line)
 
-    merge_html_files(args.input, args.output)
+    merge_html_files(args.input, args.output, args.title)
 
 
 if __name__ == "__main__":
