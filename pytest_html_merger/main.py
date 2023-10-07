@@ -72,15 +72,14 @@ def merge_html_files(in_path, out_path, title):
         cb_types[cb_type][0] = cb_val[0]
         cb_types[cb_type][1] = cb_val[1]
 
-    dur, test_count, fp = get_test_count_and_duration(ps, html_ver)
+    dur, test_count, fp = get_test_count_and_duration(ps)
 
     if html_ver < version.parse("4.0.0rc"):
         t = first_file.find("table", {"id": "results-table"})
     else:
-        f_json_blob = first_file.find(
-            'div',
-            {'id': 'data-container'}
-        ).get('data-jsonblob')
+        f_json_blob = first_file.find("div", {"id": "data-container"}).get(
+            "data-jsonblob"
+        )
         # Convert the JSON string into a dictionary
         f_data_dict = json.loads(f_json_blob)
 
@@ -92,17 +91,16 @@ def merge_html_files(in_path, out_path, title):
             for elm in tbody_res:
                 t.append(elm)
         else:
-            f_json_blob = cur_file.find(
-                'div',
-                {'id': 'data-container'}
-            ).get('data-jsonblob')
+            f_json_blob = cur_file.find("div", {"id": "data-container"}).get(
+                "data-jsonblob"
+            )
             # Convert the JSON string into a dictionary
             c_data_dict = json.loads(f_json_blob)
 
             f_data_dict["tests"].update(c_data_dict["tests"])
 
         p_res = cur_file.find_all("p")
-        _dur, _test_count, _ = get_test_count_and_duration(p_res, html_ver)
+        _dur, _test_count, _ = get_test_count_and_duration(p_res)
         dur += _dur
         test_count += _test_count
 
@@ -113,7 +111,9 @@ def merge_html_files(in_path, out_path, title):
         fp.string = f"{test_count} tests ran in {dur} seconds"
 
     if html_ver >= version.parse("4.0.0rc"):
-        first_file.find('div', {'id': 'data-container'})['data-jsonblob'] = json.dumps(f_data_dict)
+        first_file.find("div", {"id": "data-container"})["data-jsonblob"] = json.dumps(
+            f_data_dict
+        )
 
     for cb_type in cb_types:
         set_checkbox_value(first_file, cb_type, cb_types[cb_type])
@@ -122,29 +122,27 @@ def merge_html_files(in_path, out_path, title):
         f.write(str(first_file))
 
 
-def get_test_count_and_duration(ps, html_ver):
+def get_test_count_and_duration(ps):
     test_count = 0
     dur = 0
     fp = None
 
     for p in ps:
-        if html_ver >= version.parse("4.0.0rc"):
-            match = re.search(r"test.* took ", p.text)
-            if match:
-                tmp = p.text.split(" ")
-                test_count = int(tmp[0])
+        if re.search(r"test.* took ", p.text):
+            tmp = p.text.split(" ")
+            test_count = int(tmp[0])
 
-                if "ms." in tmp:
-                    dur = int(tmp[3]) / 1000
-                else:
-                    hours, minutes, seconds = map(int, tmp[3][:-1].split(':'))
-                    dur = hours * 3600 + minutes * 60 + seconds
+            if "ms." in tmp:
+                dur = int(tmp[3]) / 1000
+            else:
+                hours, minutes, seconds = map(int, tmp[3][:-1].split(":"))
+                dur = hours * 3600 + minutes * 60 + seconds
 
-                fp = p
+            fp = p
 
-                break
+            break
 
-        if html_ver < version.parse("4.0.0rc") and " tests ran" in p.text:
+        elif " tests ran" in p.text:
             tmp = p.text.split(" ")
             test_count = int(tmp[0])
             dur = float(tmp[4])
@@ -161,6 +159,7 @@ def parse_results_3():
 
 def parse_results_4():
     pass
+
 
 def set_checkbox_value(root_soap, cb_type, val):
     elem = root_soap.find("span", {"class": cb_type})
