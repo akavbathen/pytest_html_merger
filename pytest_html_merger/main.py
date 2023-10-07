@@ -20,6 +20,7 @@ CHECKBOX_REGEX = r"^(?P<num>0|[1-9]\d*) (?P<txt1>.*)"
 
 def merge_html_files(in_path, out_path, title):
     paths = get_html_files(in_path, out_path)
+
     if not paths:
         raise RuntimeError(f"Was unable to find html files in {in_path}")
 
@@ -201,7 +202,7 @@ def get_html_files(path, output_file_path):
         if p and "Report generated on " in p.text:
             onlyfiles.append(res)
 
-    return onlyfiles
+    return sorted(onlyfiles)
 
 
 def get_assets_path(path):
