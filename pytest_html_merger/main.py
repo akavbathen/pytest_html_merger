@@ -175,9 +175,9 @@ def get_html_files(path, output_file_path):
 
     for file in os.listdir(path):
         _, ext = os.path.splitext(file)
-        if os.path.isfile(file) and ext == ".html":
-            res = os.path.abspath(file)
-            if os.path.abspath(output_file_path) in res:
+        res = os.path.join(path, file)
+        if os.path.isfile(res) and ext == ".html":
+            if os.path.abspath(output_file_path) == res:
                 continue
 
             content = BeautifulSoup("".join(open(res)), features="html.parser").find(
