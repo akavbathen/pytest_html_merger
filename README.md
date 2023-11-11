@@ -29,6 +29,9 @@ optional arguments:
   -t TITLE, --title TITLE
                         title of the merged report (default is output file name)
 
+  -l LEVEL, --log_level LEVEL
+                        log level (default is INFO)
+
 ### example
 `pytest_html_merger -i /path/to/your/html/reports -o /path/to/output/report/merged.html`
 
