@@ -1,0 +1,25 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "editor.formatOnSave": true,
+        "black-formatter.importStrategy": "fromEnvironment",
+        "mypy-type-checker.importStrategy": "fromEnvironment",
+        "pylint.importStrategy": "fromEnvironment",
+        "python.testing.pytestEnabled": true,
+        "python.terminal.activateEnvInCurrentTerminal": true
+    },
+    "extensions": {
+        "recommendations": [
+            "ms-python.python",
+            "ms-python.pylint",
+            "ms-python.black-formatter",
+            "ms-python.mypy-type-checker",
+            "ms-python.vscode-pylance",
+            "tamasfe.even-better-toml"
+        ]
+    }
+}
