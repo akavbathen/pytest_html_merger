@@ -135,7 +135,7 @@ def get_test_count_and_duration(ps, html_ver):
                 if "ms." in tmp:
                     dur = int(tmp[3]) / 1000
                 else:
-                    hours, minutes, seconds = map(int, tmp[3][:-1].split())
+                    hours, minutes, seconds = map(int, tmp[3][:-1].split(":"))
                     dur = hours * 3600 + minutes * 60 + seconds
 
                 fp = p
