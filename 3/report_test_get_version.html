@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report_test_get_version.html</h1>
+    <p>Report generated on 16-Feb-2022 at 11:45:37 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "1.0.0", "py": "1.11.0", "pytest": "6.2.5"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Linux-4.15.0-163-generic-x86_64-with-Ubuntu-18.04-bionic</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"html": "3.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.6.9</td></tr></table>
+    <h2>Summary</h2>
+    <p>2 tests ran in 5.52 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">2 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">0 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_ver_stamp.py::test_get_version[git]</td>
+          <td class="col-duration">4.10</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>[2022-02-16 11:45:32.577] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;init&#x27;, &#x27;--bare&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo_remote, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.584] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo&#x27;], cwd=/home/pavelr/projects/vmn, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:32.592] [git.repo.base] [DEBUG] Cmd([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo&#x27;])&#x27;s unused stdout: 
+[2022-02-16 11:45:32.596] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.598] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.602] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:32.609] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+<br/> -------------------------------Captured log setup------------------------------- <br/>DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;init&#x27;, &#x27;--bare&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo_remote, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo&#x27;], cwd=/home/pavelr/projects/vmn, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.repo.base:base.py:1048 Cmd([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo&#x27;])&#x27;s unused stdout: 
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)<br/> ------------------------------Captured stdout call------------------------------ <br/>[2022-02-16 11:45:32.618] [filelock] [DEBUG] Attempting to acquire lock 140441554157752 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:32.618] [filelock] [DEBUG] Lock 140441554157752 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:32.620] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.625] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.627] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.628] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.init&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.630] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.635] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.637] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.639] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.643] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.645] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.648] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:32.651] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:32.651] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[INFO] Initialized vmn tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo
+[2022-02-16 11:45:32.658] [vmn] [INFO] Initialized vmn tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo
+[2022-02-16 11:45:32.659] [filelock] [DEBUG] Attempting to release lock 140441554157752 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:32.659] [filelock] [DEBUG] Lock 140441554157752 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:32.663] [filelock] [DEBUG] Attempting to acquire lock 140441557114832 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:32.663] [filelock] [DEBUG] Lock 140441557114832 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:32.664] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.670] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.672] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.674] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;ce062dd19a8f927531ff062535cae7b05bcedcc5&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.675] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.678] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:32.680] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.682] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.684] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.686] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.688] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.690] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.692] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.695] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:32.697] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.808] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.0.0\n    changesets:\n      .:\n        hash: 8ca6428d1360865de29f285f003e30464e05bf9a\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.0.0\n    release_mode: init\n    stamped_on_branch: master\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.0.0&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.819] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:33.832] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:33.834] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:33.867] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.0&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:33.871] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:33.871] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.0&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[INFO] Initialized app tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/test_app
+[2022-02-16 11:45:33.877] [vmn] [INFO] Initialized app tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/test_app
+[2022-02-16 11:45:33.877] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.883] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.886] [filelock] [DEBUG] Attempting to release lock 140441557114832 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:33.886] [filelock] [DEBUG] Lock 140441557114832 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:33.887] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;checkout&#x27;, &#x27;-b&#x27;, &#x27;new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.891] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:33.893] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:33.896] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;push&#x27;, &#x27;--set-upstream&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.903] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;pull&#x27;, &#x27;-v&#x27;, &#x27;--rebase&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:33.931] [filelock] [DEBUG] Attempting to acquire lock 140441557112144 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:33.931] [filelock] [DEBUG] Lock 140441557112144 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:33.935] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.941] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.943] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:33.945] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;25b26b2c8cb5066d05b56a946c64bedbbc2f29c3&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.947] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:33.949] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:33.951] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.953] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.958] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.962] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:33.964] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.966] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.967] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.969] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.971] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.973] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/new_branch..new_branch&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.979] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.982] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_0.0*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.984] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:33.987] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.097] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.0.1\n    changesets:\n      .:\n        hash: 25b26b2c8cb5066d05b56a946c64bedbbc2f29c3\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.0.0\n    release_mode: patch\n    stamped_on_branch: new_branch\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.0.1&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.113] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:35.126] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:35.128] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:35.144] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:35.150] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:35.150] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[INFO] 0.0.1
+[2022-02-16 11:45:35.162] [vmn] [INFO] 0.0.1
+[2022-02-16 11:45:35.162] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.171] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.176] [filelock] [DEBUG] Attempting to release lock 140441557112144 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:35.176] [filelock] [DEBUG] Lock 140441557112144 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:35.177] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;checkout&#x27;, &#x27;master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.181] [root] [INFO] going to run: git merge --squash new_branch master
+Updating 874d74b..3b5aef0
+Fast-forward
+Squash commit -- not updating HEAD
+ .vmn/test_app/last_known_app_version.yml | 2 +-
+ f1.file                                  | 1 +
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+ create mode 100644 f1.file
+[master f2eb3d9] Merge new_branch in master
+ Committer: Pavel Rogovoy &lt;pavelr@pavel-ext.final.co.il&gt;
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly. Run the
+following command and follow the instructions in your editor to edit
+your configuration file:
+
+    git config --global --edit
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 2 files changed, 2 insertions(+), 1 deletion(-)
+ create mode 100644 f1.file
+[2022-02-16 11:45:35.190] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;pull&#x27;, &#x27;-v&#x27;, &#x27;--rebase&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:35.237] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:35.245] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:35.246] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:35.264] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:35.276] [filelock] [DEBUG] Attempting to acquire lock 140441559030248 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:35.276] [filelock] [DEBUG] Lock 140441559030248 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:35.283] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.297] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.302] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:35.306] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;f2eb3d9b291acf80958e7e2343626a0357210453&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.310] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:35.316] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:35.321] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.326] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.338] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.346] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:35.349] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.352] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.354] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.357] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.359] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.361] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.368] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.371] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;f2eb3d9b291acf80958e7e2343626a0357210453&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.373] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_0.0*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.376] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:35.379] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.488] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.0.2\n    changesets:\n      .:\n        hash: f2eb3d9b291acf80958e7e2343626a0357210453\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.0.1\n    release_mode: patch\n    stamped_on_branch: master\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.0.2&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.499] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:36.512] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:36.515] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:36.551] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.2&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:36.564] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:36.566] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.2&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+[INFO] 0.0.2
+[2022-02-16 11:45:36.596] [vmn] [INFO] 0.0.2
+[2022-02-16 11:45:36.598] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.622] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.635] [filelock] [DEBUG] Attempting to release lock 140441559030248 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.635] [filelock] [DEBUG] Lock 140441559030248 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+<br/> -------------------------------Captured log call-------------------------------- <br/>DEBUG    filelock:_api.py:165 Attempting to acquire lock 140441554157752 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:169 Lock 140441554157752 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.init&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+INFO     vmn:vmn.py:1109 Initialized vmn tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo
+DEBUG    filelock:_api.py:199 Attempting to release lock 140441554157752 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:202 Lock 140441554157752 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:165 Attempting to acquire lock 140441557114832 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:169 Lock 140441557114832 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;ce062dd19a8f927531ff062535cae7b05bcedcc5&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.0.0\n    changesets:\n      .:\n        hash: 8ca6428d1360865de29f285f003e30464e05bf9a\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.0.0\n    release_mode: init\n    stamped_on_branch: master\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.0.0&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.0&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.0&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+INFO     vmn:vmn.py:1134 Initialized app tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/test_app
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    filelock:_api.py:199 Attempting to release lock 140441557114832 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:202 Lock 140441557114832 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;checkout&#x27;, &#x27;-b&#x27;, &#x27;new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;push&#x27;, &#x27;--set-upstream&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;pull&#x27;, &#x27;-v&#x27;, &#x27;--rebase&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    filelock:_api.py:165 Attempting to acquire lock 140441557112144 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:169 Lock 140441557112144 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;25b26b2c8cb5066d05b56a946c64bedbbc2f29c3&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/new_branch..new_branch&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_0.0*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.0.1\n    changesets:\n      .:\n        hash: 25b26b2c8cb5066d05b56a946c64bedbbc2f29c3\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.0.0\n    release_mode: patch\n    stamped_on_branch: new_branch\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.0.1&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/new_branch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+INFO     vmn:vmn.py:1221 0.0.1
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    filelock:_api.py:199 Attempting to release lock 140441557112144 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:202 Lock 140441557112144 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;checkout&#x27;, &#x27;master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+INFO     root:conftest.py:87 going to run: git merge --squash new_branch master
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;pull&#x27;, &#x27;-v&#x27;, &#x27;--rebase&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    filelock:_api.py:165 Attempting to acquire lock 140441559030248 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:169 Lock 140441559030248 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;f2eb3d9b291acf80958e7e2343626a0357210453&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;f2eb3d9b291acf80958e7e2343626a0357210453&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_0.0*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.0.2\n    changesets:\n      .:\n        hash: f2eb3d9b291acf80958e7e2343626a0357210453\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.0.1\n    release_mode: patch\n    stamped_on_branch: master\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.0.2&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.2&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.0.2&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=True, shell=None, istream=None)
+INFO     vmn:vmn.py:1221 0.0.2
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    filelock:_api.py:199 Attempting to release lock 140441559030248 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:202 Lock 140441559030248 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_git_0/test_repo/.vmn/vmn.lock<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/test_ver_stamp.py::test_get_version_number_from_file[git]</td>
+          <td class="col-duration">1.27</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -----------------------------Captured stdout setup------------------------------ <br/>[2022-02-16 11:45:36.652] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;init&#x27;, &#x27;--bare&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo_remote, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.658] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo&#x27;], cwd=/home/pavelr/projects/vmn, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:36.664] [git.repo.base] [DEBUG] Cmd([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo&#x27;])&#x27;s unused stdout: 
+[2022-02-16 11:45:36.668] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.672] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.679] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:36.688] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+<br/> -------------------------------Captured log setup------------------------------- <br/>DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;init&#x27;, &#x27;--bare&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo_remote, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo&#x27;], cwd=/home/pavelr/projects/vmn, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.repo.base:base.py:1048 Cmd([&#x27;git&#x27;, &#x27;clone&#x27;, &#x27;-v&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo_remote&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo&#x27;])&#x27;s unused stdout: 
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)<br/> ------------------------------Captured stdout call------------------------------ <br/>[2022-02-16 11:45:36.699] [filelock] [DEBUG] Attempting to acquire lock 140441557774120 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.699] [filelock] [DEBUG] Lock 140441557774120 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.701] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.706] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.708] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.710] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.init&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.712] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.714] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.716] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.717] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.721] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.724] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.727] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:36.729] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:36.730] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[INFO] Initialized vmn tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo
+[2022-02-16 11:45:36.737] [vmn] [INFO] Initialized vmn tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo
+[2022-02-16 11:45:36.737] [filelock] [DEBUG] Attempting to release lock 140441557774120 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.738] [filelock] [DEBUG] Lock 140441557774120 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.740] [filelock] [DEBUG] Attempting to acquire lock 140441557771320 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.740] [filelock] [DEBUG] Lock 140441557771320 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:36.742] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.747] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.749] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.751] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;e0be2804c52cef1715a0c9ae2096c86a33b7ed89&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.753] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.755] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+[2022-02-16 11:45:36.757] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.759] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.761] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.763] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.765] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.767] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.769] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.772] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:36.774] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:37.884] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.2.1\n    changesets:\n      .:\n        hash: 51748239117128a9015a992aba62287b925c7fe2\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.2.1\n    release_mode: init\n    stamped_on_branch: master\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.2.1&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:37.890] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:37.894] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:37.895] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:37.903] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.2.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[2022-02-16 11:45:37.906] [git.cmd] [DEBUG] AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+[2022-02-16 11:45:37.907] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.2.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+[INFO] Initialized app tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/test_app
+[2022-02-16 11:45:37.914] [vmn] [INFO] Initialized app tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/test_app
+[2022-02-16 11:45:37.915] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:37.921] [git.cmd] [DEBUG] Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+[2022-02-16 11:45:37.923] [filelock] [DEBUG] Attempting to release lock 140441557771320 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+[2022-02-16 11:45:37.924] [filelock] [DEBUG] Lock 140441557771320 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+<br/> -------------------------------Captured log call-------------------------------- <br/>DEBUG    filelock:_api.py:165 Attempting to acquire lock 140441557774120 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:169 Lock 140441557774120 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.init&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+INFO     vmn:vmn.py:1109 Initialized vmn tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo
+DEBUG    filelock:_api.py:199 Attempting to release lock 140441557774120 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:202 Lock 140441557774120 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:165 Attempting to acquire lock 140441557771320 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:169 Lock 140441557771320 acquired on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;fetch&#x27;, &#x27;--tags&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;e0be2804c52cef1715a0c9ae2096c86a33b7ed89&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;cat-file&#x27;, &#x27;--batch&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;cat-file&#x27;, &#x27;--batch-check&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=&lt;valid stream&gt;)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;remote&#x27;, &#x27;get-url&#x27;, &#x27;--all&#x27;, &#x27;origin&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;ls-files&#x27;, &#x27;--error-unmatch&#x27;, &#x27;/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/conf.yml&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--cached&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;--raw&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-parse&#x27;, &#x27;--verify&#x27;, &#x27;origin/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;rev-list&#x27;, &#x27;origin/master..master&#x27;, &#x27;--&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;diff&#x27;, &#x27;--abbrev=40&#x27;, &#x27;--full-index&#x27;, &#x27;-M&#x27;, &#x27;--raw&#x27;, &#x27;-z&#x27;, &#x27;--no-color&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;status&#x27;, &#x27;--porcelain&#x27;, &#x27;--untracked-files&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;-m&#x27;, &quot;stamping:\n  app:\n    _version: 0.2.1\n    changesets:\n      .:\n        hash: 51748239117128a9015a992aba62287b925c7fe2\n        remote: ../test_repo_remote\n        vcs_type: git\n    info: {}\n    name: test_app\n    prerelease: release\n    prerelease_count: {}\n    previous_version: 0.2.1\n    release_mode: init\n    stamped_on_branch: master\nvmn_info:\n  description_message_version: &#x27;1.1&#x27;\n  vmn_version: dev\n&quot;, &#x27;test_app_0.2.1&#x27;, &#x27;HEAD&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/heads/master&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;-o&#x27;, &#x27;ci.skip&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.2.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:446 AutoInterrupt wait stderr: b&#x27;fatal: the receiving end does not support push options\nfatal: The remote end hung up unexpectedly&#x27;
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;push&#x27;, &#x27;--porcelain&#x27;, &#x27;origin&#x27;, &#x27;refs/tags/test_app_0.2.1&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=True, shell=None, istream=None)
+INFO     vmn:vmn.py:1134 Initialized app tracking on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/test_app
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test_app_*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    git.cmd:cmd.py:815 Popen([&#x27;git&#x27;, &#x27;-c&#x27;, &#x27;user.name=&quot;vmn&quot;&#x27;, &#x27;-c&#x27;, &#x27;user.email=&quot;vmn&quot;&#x27;, &#x27;tag&#x27;, &#x27;--sort&#x27;, &#x27;taggerdate&#x27;, &#x27;--list&#x27;, &#x27;test*&#x27;], cwd=/tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo, universal_newlines=False, shell=None, istream=None)
+DEBUG    filelock:_api.py:199 Attempting to release lock 140441557771320 on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock
+DEBUG    filelock:_api.py:202 Lock 140441557771320 released on /tmp/pytest-of-pavelr/pytest-64/test_get_version_number_from_f0/test_repo/.vmn/vmn.lock<br/></div></td></tr></tbody></table></body></html>
