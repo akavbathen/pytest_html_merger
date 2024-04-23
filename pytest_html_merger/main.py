@@ -47,8 +47,12 @@ def merge_html_files(in_path: str, out_path: str, title: str):
             head.append(first_file.new_tag("style", type="text/css"))
             head.style.append(content)
 
+    if not title:
+        title = os.path.basename(out_path)
+
+    first_file.title.string = title
     h = first_file.find("h1")
-    h.string = title or os.path.basename(out_path)
+    h.string = title
 
     ps = first_file.find_all("p")
     pytest_version = ps[0].text.split(" ")[-1]
