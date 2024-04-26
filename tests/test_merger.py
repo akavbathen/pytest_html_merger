@@ -38,7 +38,7 @@ def test_succeeded_and_failed(tmp_path):
     subfolder.mkdir()
     file_name: pathlib.Path = subfolder / "result.html"
 
-    create_pytest_report(tmp_path, success=2, failed=2)
+    create_pytest_report(tmp_path, success=20, failed=2)
     create_pytest_report(tmp_path, success=1, failed=1)
     phm.main(
         [
