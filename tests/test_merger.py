@@ -34,7 +34,7 @@ def test_h1_title():
 
 
 def test_succeeded_and_failed(tmp_path):
-    tmp_path = pathlib.Path("C:\\Users\\akavb\\AppData\\Local\\Temp\\pytest-of-akavb\\pytest-7\\test_succeeded_and_failed0\\tests")
+    tmp_path = pathlib.Path("/private/var/folders/sz/zyxdxk1j67v40grz43dgnpx00000gp/T/pytest-of-bathen/pytest-2/test_succeeded_and_failed0")
     subfolder: pathlib.Path = tmp_path / "results"
     subfolder.mkdir(exist_ok=True)
     file_name: pathlib.Path = subfolder / "result.html"
