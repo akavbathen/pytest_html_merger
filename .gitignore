@@ -2,3 +2,8 @@
 .DS_Store
 /*.egg-info
 /venv
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/pytest_html_merger.iml
+.idea/vcs.xml
