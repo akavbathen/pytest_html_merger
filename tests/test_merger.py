@@ -34,11 +34,12 @@ def test_h1_title():
 
 
 def test_succeeded_and_failed(tmp_path):
+    tmp_path = pathlib.Path("C:\\Users\\akavb\\AppData\\Local\\Temp\\pytest-of-akavb\\pytest-7\\test_succeeded_and_failed0\\tests")
     subfolder: pathlib.Path = tmp_path / "results"
-    subfolder.mkdir()
+    subfolder.mkdir(exist_ok=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    create_pytest_report(tmp_path, success=20, failed=2)
+    create_pytest_report(tmp_path, success=10, failed=2)
     create_pytest_report(tmp_path, success=1, failed=1)
     phm.main(
         [
