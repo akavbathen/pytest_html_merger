@@ -33,21 +33,21 @@ def test_h1_title():
     assert title == "merged.html"
 
 
-def test_succeeded_and_failed(tmp_path):
-    tmp_path = pathlib.Path("/private/var/folders/sz/zyxdxk1j67v40grz43dgnpx00000gp/T/pytest-of-bathen/pytest-2/test_succeeded_and_failed0")
-    subfolder: pathlib.Path = tmp_path / "results"
-    subfolder.mkdir(exist_ok=True)
+def test_succeeded_and_failed(custom_tmp_path):
+    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = tmp_path / "input_reports"
+    input_path = custom_tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
+    venv_path = custom_tmp_path / "venv4"
 
-    create_pytest_report(input_path, success=10, failed=2)
-    create_pytest_report(input_path, success=1, failed=1)
+    create_pytest_report(venv_path, input_path, success=10, failed=2)
+    create_pytest_report(venv_path, input_path, success=1, failed=1)
     phm.main(
         [
             "--input",
-            str(tmp_path),
+            str(input_path),
             "-o",
             str(file_name),
             "-t",
