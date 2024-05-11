@@ -113,12 +113,11 @@ def install_packages(venv_path, packages):
 
 @pytest.fixture
 def custom_tmp_path(tmp_path):
-    # List of packages to install
-    packages_to_install = ['pytest', 'pytest-html']
-
     pytest_vers = ["3", "4"]
     for pytest_ver in pytest_vers:
+        packages_to_install = ['pytest']
         venv_path = tmp_path / f"venv{pytest_ver}"
+        packages_to_install.append(f"pytest-html=={pytest_ver}")
 
         # Create the virtual environment
         if create_virtualenv(venv_path):
