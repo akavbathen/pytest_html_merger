@@ -77,3 +77,40 @@ def test_succeeded_and_failed(custom_tmp_path):
 
     assert file_name.exists()
 
+def test_the_number_of_failures_indicated_in_the_report(custom_tmp_path, element=None):
+    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder.mkdir(exist_ok=True, parents=True)
+    file_name: pathlib.Path = subfolder / "result.html"
+
+    input_path = custom_tmp_path / "input_reports"
+    input_path.mkdir(exist_ok=True)
+    venv_path = custom_tmp_path / "venv4"
+
+    create_pytest_report(venv_path, input_path, success=2, failed=2)
+    create_pytest_report(venv_path, input_path, success=1, failed=1)
+    phm.main(
+        [
+            "--input",
+            str(input_path),
+            "-o",
+            str(file_name),
+            "-t",
+            "html_report"
+
+        ]
+    )
+    with open(file_name, "r") as f:
+        html_content: str = f.read()
+
+    soup = BeautifulSoup(html_content, "html.parser")
+    element = soup.find('span', class_='failed')
+    text = element.get_text()
+
+    parts = text.split(' ')
+    res = (parts[0].strip())
+    assert res == '3'
+
+
+
+
+
