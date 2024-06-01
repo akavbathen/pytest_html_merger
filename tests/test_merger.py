@@ -9,16 +9,35 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-def test_title():
-    html_file_path: str = "./merged.html"
+def test_title(custom_tmp_path):
+    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder.mkdir(exist_ok=True, parents=True)
+    file_name: pathlib.Path = subfolder / "result.html"
 
-    with open(html_file_path, "r") as f:
+    input_path = custom_tmp_path / "input_reports"
+    input_path.mkdir(exist_ok=True)
+    venv_path = custom_tmp_path / "venv4"
+
+    create_pytest_report(venv_path, input_path, success=1, failed=2)
+    create_pytest_report(venv_path, input_path, success=1, failed=1)
+    phm.main(
+        [
+            "--input",
+            str(input_path),
+            "-o",
+            str(file_name),
+            "-t",
+            "merged"
+
+        ]
+    )
+
+    with open(file_name, "r") as f:
         html_content: str = f.read()
 
     soup = BeautifulSoup(html_content, "html.parser")
-
-    title = soup.title.string
-    assert title == "merged.html"
+    title = soup.select_one("#head-title").string
+    assert title == "merged"
 
 
 def test_h1_title(custom_tmp_path):
@@ -112,14 +131,19 @@ def test_the_number_of_failures_indicated_in_the_report(custom_tmp_path, element
 
 
 
-def test_checking_the_number_of_failed_records(custom_tmp_path):
+@pytest.mark.parametrize("payTest", [
+    ("3.2"),        # test case 1
+    ("4")   # test case 2
+
+])
+def test_checking_the_number_of_failed_records(custom_tmp_path,payTest):
     subfolder: pathlib.Path = custom_tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
     input_path = custom_tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4.1.1"
+    venv_path = custom_tmp_path / f"venv{payTest}"
 
     create_pytest_report(venv_path, input_path, success=2, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
@@ -141,3 +165,7 @@ def test_checking_the_number_of_failed_records(custom_tmp_path):
 
     elements = driver.find_elements(By.CSS_SELECTOR, ".results-table-row.failed")
     assert len(elements) == 3
+
+
+
+
