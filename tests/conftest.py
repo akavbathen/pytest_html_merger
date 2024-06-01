@@ -113,9 +113,9 @@ def install_packages(venv_path, packages):
 
 @pytest.fixture
 def custom_tmp_path(tmp_path):
-    pytest_vers = ["3", "4"]
+    pytest_vers = ["3.2", "4.1.1"]
     for pytest_ver in pytest_vers:
-        packages_to_install = ['pytest']
+        packages_to_install = ['pytest', "setuptools"]
         venv_path = tmp_path / f"venv{pytest_ver}"
         packages_to_install.append(f"pytest-html=={pytest_ver}")
 

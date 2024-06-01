@@ -25,8 +25,8 @@ def merge_html_files(in_path: str, out_path: str, title: str):
 
     assets_dir_path = get_assets_path(in_path)
 
-    first_file = BeautifulSoup("".join(open(paths[0])), features="html.parser")
-    paths.pop(0)
+    first_file_path = paths.pop(0)
+    first_file = BeautifulSoup("".join(open(first_file_path)), features="html.parser")
 
     try:
         first_file.find("link").decompose()
@@ -87,6 +87,12 @@ def merge_html_files(in_path: str, out_path: str, title: str):
         # Convert the JSON string into a dictionary
         f_data_dict = json.loads(f_json_blob)
 
+        path_parts = first_file_path.split(os.sep)
+        suffix = os.path.join(*path_parts[-2:])
+
+        # Create a new dictionary with modified keys
+        f_data_dict["tests"] = {f"{suffix}:{key}": value for key, value in f_data_dict["tests"].items()}
+
     for path in paths:
         cur_file = BeautifulSoup("".join(open(path)), features="html.parser")
 
@@ -100,6 +106,14 @@ def merge_html_files(in_path: str, out_path: str, title: str):
             )
             # Convert the JSON string into a dictionary
             c_data_dict = json.loads(f_json_blob)
+
+            path_parts = path.split(os.sep)
+
+            parts = -2
+            suffix = os.path.join(*path_parts[parts:])
+
+            # Create a new dictionary with modified keys
+            c_data_dict["tests"] = {f"{suffix}:{key}": value for key, value in c_data_dict["tests"].items()}
 
             f_data_dict["tests"].update(c_data_dict["tests"])
 

@@ -119,7 +119,7 @@ def test_checking_the_number_of_failed_records(custom_tmp_path):
 
     input_path = custom_tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4"
+    venv_path = custom_tmp_path / "venv4.1.1"
 
     create_pytest_report(venv_path, input_path, success=2, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
