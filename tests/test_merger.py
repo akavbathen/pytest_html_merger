@@ -7,6 +7,9 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
+from datetime import datetime
+import re
+
 
 
 def test_title(custom_tmp_path):
@@ -204,5 +207,48 @@ def test_Version_check_pytest(custom_tmp_path,payTest):
     texts = p_element.text
     version = texts[-5:]
     assert version == payTest
+
+
+def test_The_date_the_report_was_created(custom_tmp_path):
+    today = datetime.today().date()
+
+    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder.mkdir(exist_ok=True, parents=True)
+    file_name: pathlib.Path = subfolder / "result.html"
+
+    input_path = custom_tmp_path / "input_reports"
+    input_path.mkdir(exist_ok=True)
+    venv_path = custom_tmp_path / "venv4.1.1"
+
+    create_pytest_report(venv_path, input_path, success=10, failed=2)
+    create_pytest_report(venv_path, input_path, success=1, failed=1)
+    phm.main(
+        [
+            "--input",
+            str(input_path),
+            "-o",
+            str(file_name),
+            "-t",
+            "html_report"
+
+        ]
+    )
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    file_path = f'file://{file_name}'
+    driver.get(file_path)
+
+    p_element = driver.find_element(By.TAG_NAME, 'p')
+    text = p_element.text
+    pattern = r'^.+ (\d{2}-.+-\d{4})'
+    match = re.search(pattern, text)
+    date_str = match.group(1)
+
+    date_obj = datetime.strptime(date_str, '%d-%b-%Y').date()
+    assert date_obj == today
+
+
+
+
 
 
