@@ -1,4 +1,6 @@
 import pathlib
+import time
+
 import pytest
 import pytest_html_merger.main as phm
 from bs4 import BeautifulSoup
@@ -177,6 +179,7 @@ def test_checking_the_number_of_failed_and_success_records(custom_tmp_path,payTe
 
 ])
 def test_Version_check_pytest(custom_tmp_path,payTest):
+    start_time = time.time()
     subfolder: pathlib.Path = custom_tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
@@ -185,8 +188,10 @@ def test_Version_check_pytest(custom_tmp_path,payTest):
     input_path.mkdir(exist_ok=True)
     venv_path = custom_tmp_path / f"venv{payTest}"
 
+
     create_pytest_report(venv_path, input_path, success=2, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
+
     phm.main(
         [
             "--input",
@@ -199,6 +204,7 @@ def test_Version_check_pytest(custom_tmp_path,payTest):
         ]
     )
 
+
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     file_path = f'file://{file_name}'
     driver.get(file_path)
@@ -208,6 +214,9 @@ def test_Version_check_pytest(custom_tmp_path,payTest):
     version = texts[-5:]
     assert version == payTest
 
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"The function took {duration} seconds to execute.")
 
 def test_The_date_the_report_was_created(custom_tmp_path):
     today = datetime.today().date()

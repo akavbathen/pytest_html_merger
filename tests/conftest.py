@@ -3,6 +3,8 @@ import pathlib
 import random
 import string
 import subprocess
+from datetime import time
+import time as t
 
 import pytest
 
@@ -113,18 +115,26 @@ def install_packages(venv_path, packages):
 
 @pytest.fixture
 def custom_tmp_path(tmp_path):
+    start_time = t.time()
     pytest_vers = ["3.2.0", "4.1.1"]
     for pytest_ver in pytest_vers:
         packages_to_install = ['pytest', "setuptools"]
-        venv_path = tmp_path / f"venv{pytest_ver}"
         packages_to_install.append(f"pytest-html=={pytest_ver}")
+
+        venv_path = tmp_path / f"venv{pytest_ver}"
 
         # Create the virtual environment
         if create_virtualenv(venv_path):
             # Install packages in the virtual environment
             install_packages(venv_path, packages_to_install)
+            end_time = t.time()
+            duration = end_time - start_time
 
     # You can set up the temporary directory here, e.g., creating a subdirectory or files
 
+
+
     # Return the path to the subdirectory, or just tmp_path if you don't need a subdirectory
     return tmp_path
+
+
