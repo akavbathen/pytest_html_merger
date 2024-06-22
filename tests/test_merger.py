@@ -137,18 +137,18 @@ def test_the_number_of_failures_indicated_in_the_report(custom_tmp_path, element
 
 
 @pytest.mark.parametrize("payTest", [
-    ("3.2"),        # test case 1
-    ("4")   # test case 2
+    ("3.2.0"),        # test case 1
+    ("4.1.1")   # test case 2
 
 ])
 def test_checking_the_number_of_failed_and_success_records(custom_tmp_path,payTest):
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / f"venv{payTest}"
+    venv_path = custom_tmp_path.venv_path / f"venv{payTest}"
 
     create_pytest_report(venv_path, input_path, success=2, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
@@ -178,15 +178,15 @@ def test_checking_the_number_of_failed_and_success_records(custom_tmp_path,payTe
     ("4.1.1")   # test case 2
 
 ])
-def test_Version_check_pytest(custom_tmp_path,payTest):
+def test_Version_check_pytest(custom_tmp_path, payTest):
     start_time = time.time()
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path/ "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path/ "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / f"venv{payTest}"
+    venv_path = custom_tmp_path.venv_path / f"venv{payTest}"
 
 
     create_pytest_report(venv_path, input_path, success=2, failed=2)

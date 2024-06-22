@@ -3,8 +3,8 @@ import pathlib
 import random
 import string
 import subprocess
-from datetime import time
-import time as t
+from dataclasses import dataclass
+
 
 import pytest
 
@@ -71,8 +71,10 @@ def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, suc
 
 
 def run_pytest(venv_path, path_to_tests: pathlib.Path, report_path: pathlib.Path):
-    result = subprocess.run(f"{venv_path}/bin/pytest --html={report_path} {path_to_tests}", shell=True)
-
+    try:
+        result = subprocess.run(f"{venv_path}/bin/pytest --html={report_path} {path_to_tests}", shell=True)
+    except Exception as B:
+        pass
     if result.returncode == 0:
         print("Command executed successfully!")
         print("Output:\n", result.stdout)
@@ -113,28 +115,43 @@ def install_packages(venv_path, packages):
         print(f"Failed to install packages: {e}")
 
 
-@pytest.fixture
-def custom_tmp_path(tmp_path):
-    start_time = t.time()
+
+@pytest.fixture(scope="session")
+def venv():
+    loc = pathlib.Path("venv_tests")
+    if loc.exists():
+        return loc
+
+    loc.mkdir()
     pytest_vers = ["3.2.0", "4.1.1"]
     for pytest_ver in pytest_vers:
         packages_to_install = ['pytest', "setuptools"]
         packages_to_install.append(f"pytest-html=={pytest_ver}")
 
-        venv_path = tmp_path / f"venv{pytest_ver}"
+        venv_path = loc / f"venv{pytest_ver}"
 
         # Create the virtual environment
         if create_virtualenv(venv_path):
             # Install packages in the virtual environment
             install_packages(venv_path, packages_to_install)
-            end_time = t.time()
-            duration = end_time - start_time
 
     # You can set up the temporary directory here, e.g., creating a subdirectory or files
 
-
-
     # Return the path to the subdirectory, or just tmp_path if you don't need a subdirectory
-    return tmp_path
+    return loc
+
+
+@dataclass
+class TestPath:
+    """Class for keeping track of an item in inventory."""
+    venv_path: pathlib.Path
+    tmp_path: pathlib.Path
+
+
+@pytest.fixture(scope="function")
+def custom_tmp_path(venv, tmp_path):
+    ret = TestPath(venv, tmp_path)
+    
+    return ret
 
 
