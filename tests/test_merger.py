@@ -15,13 +15,13 @@ import re
 
 
 def test_title(custom_tmp_path):
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4"
+    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
 
     create_pytest_report(venv_path, input_path, success=1, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
@@ -46,13 +46,13 @@ def test_title(custom_tmp_path):
 
 
 def test_h1_title(custom_tmp_path):
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4"
+    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
 
     create_pytest_report(venv_path, input_path, success=10, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
@@ -77,13 +77,13 @@ def test_h1_title(custom_tmp_path):
 
 
 def test_report_created(custom_tmp_path):
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4"
+    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
 
     create_pytest_report(venv_path, input_path, success=10, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
@@ -102,13 +102,13 @@ def test_report_created(custom_tmp_path):
     assert file_name.exists()
 
 def test_the_number_of_failures_indicated_in_the_report(custom_tmp_path, element=None):
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4"
+    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
 
     create_pytest_report(venv_path, input_path, success=2, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
@@ -221,13 +221,13 @@ def test_Version_check_pytest(custom_tmp_path, payTest):
 def test_The_date_the_report_was_created(custom_tmp_path):
     today = datetime.today().date()
 
-    subfolder: pathlib.Path = custom_tmp_path / "results"
+    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
     subfolder.mkdir(exist_ok=True, parents=True)
     file_name: pathlib.Path = subfolder / "result.html"
 
-    input_path = custom_tmp_path / "input_reports"
+    input_path = custom_tmp_path.tmp_path / "input_reports"
     input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path / "venv4.1.1"
+    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
 
     create_pytest_report(venv_path, input_path, success=10, failed=2)
     create_pytest_report(venv_path, input_path, success=1, failed=1)
