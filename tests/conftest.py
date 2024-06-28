@@ -128,7 +128,7 @@ def venv():
         packages_to_install = ['pytest', "setuptools"]
         packages_to_install.append(f"pytest-html=={pytest_ver}")
 
-        venv_path = loc / f"venv{pytest_ver}"
+        venv_path: pathlib.Path = loc / f"venv{pytest_ver}"
 
         # Create the virtual environment
         if create_virtualenv(venv_path):
@@ -145,13 +145,25 @@ def venv():
 class TestPath:
     """Class for keeping track of an item in inventory."""
     venv_path: pathlib.Path
+    venv_path_4: pathlib.Path
     tmp_path: pathlib.Path
+    input_path: pathlib.Path
+    result_file_name: pathlib.Path
 
 
 @pytest.fixture(scope="function")
-def custom_tmp_path(venv, tmp_path):
-    ret = TestPath(venv, tmp_path)
-    
+def custom_tmp_path(venv: pathlib.Path, tmp_path: pathlib.Path):
+    venv4 = venv / "venv4.1.1"
+    input_p = tmp_path / "input_reports"
+
+    subfolder: pathlib.Path = tmp_path / "results"
+    subfolder.mkdir(parents=True)
+
+    file_name: pathlib.Path = subfolder / "result.html"
+    ret: TestPath = TestPath(venv, venv4, tmp_path,input_p,file_name)
+
+    input_p.mkdir(exist_ok=True)
+
     return ret
 
 
