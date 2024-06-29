@@ -219,7 +219,23 @@ def test_The_date_the_report_was_created(custom_tmp_path):
     assert date_obj == today
 
 
+def test_Creating_and_testing_Skip(custom_tmp_path):
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=10, failed=2, skip=1)
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=1, failed=1, skip=2)
+    phm.main(
+        [
+            "--input",
+            str(custom_tmp_path.input_path),
+            "-o",
+            str(custom_tmp_path.result_file_name),
+            "-t",
+            "html_report"
 
+        ]
+    )
 
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    file_path = f'file://{custom_tmp_path.result_file_name}'
+    driver.get(file_path)
 
 

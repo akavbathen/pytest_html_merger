@@ -9,6 +9,24 @@ from dataclasses import dataclass
 import pytest
 
 
+def create_skip_test(skip: int, filepath: pathlib.Path):
+    content = """
+import pytest
+
+    """
+    b = """
+@pytest.mark.skip(reason="Skipping this test for demonstration purposes")
+def test_number():
+    assert 10 == 10
+     """
+
+    for i in range(skip):
+        content += b.replace("test_number", f"test_number_{i}")
+
+    with open(str(filepath), 'w') as file:
+        file.write(content)
+
+
 def create_positive_tests(success: int, filepath: pathlib.Path):
     content = """
 import pytest
@@ -53,7 +71,7 @@ def create_folder_name(base_name, num_letters=5):
     return folder_name
 
 
-def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, success: int, failed: int):
+def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, success: int, failed: int, skip: int):
     base_folder_name = "tests"
     test_path: pathlib.Path = report_path / base_folder_name
     test_path.mkdir(exist_ok=True)
@@ -62,6 +80,7 @@ def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, suc
     random_path: pathlib.Path = test_path / new_folder_name
     random_path.mkdir()
 
+    create_skip_test(skip, random_path / "test_skip.py")
     create_positive_tests(success, random_path / "test_pos.py")
     create_negative_tests(failed, random_path / "test_neg.py")
     res = run_pytest(venv_path, random_path, random_path / "report.html")
