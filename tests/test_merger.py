@@ -38,14 +38,6 @@ def test_title(custom_tmp_path: TestPath):
 
 
 def test_h1_title(custom_tmp_path: TestPath):
-    # subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
-    # subfolder.mkdir(exist_ok=True, parents=True)
-    # file_name: pathlib.Path = subfolder / "result.html"
-    #
-    # input_path = custom_tmp_path.tmp_path / "input_reports"
-    # input_path.mkdir(exist_ok=True)
-    # pytest_html_4_venv_path = custom_tmp_path.venv_path / "venv4.1.1"
-
     create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=10, failed=2)
     create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=1, failed=1)
     phm.main(
@@ -68,54 +60,38 @@ def test_h1_title(custom_tmp_path: TestPath):
     assert title == "merged"
 
 
-def test_report_created(custom_tmp_path):
-    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
-    subfolder.mkdir(exist_ok=True, parents=True)
-    file_name: pathlib.Path = subfolder / "result.html"
-
-    input_path = custom_tmp_path.tmp_path / "input_reports"
-    input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
-
-    create_pytest_report(venv_path, input_path, success=10, failed=2)
-    create_pytest_report(venv_path, input_path, success=1, failed=1)
+def test_report_created(custom_tmp_path: TestPath):
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=10, failed=2)
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=1, failed=1)
     phm.main(
         [
             "--input",
-            str(input_path),
+            str(custom_tmp_path.input_path),
             "-o",
-            str(file_name),
+            str(custom_tmp_path.result_file_name),
             "-t",
             "html_report"
 
         ]
     )
 
-    assert file_name.exists()
+    assert custom_tmp_path.result_file_name.exists()
 
 def test_the_number_of_failures_indicated_in_the_report(custom_tmp_path, element=None):
-    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
-    subfolder.mkdir(exist_ok=True, parents=True)
-    file_name: pathlib.Path = subfolder / "result.html"
-
-    input_path = custom_tmp_path.tmp_path / "input_reports"
-    input_path.mkdir(exist_ok=True)
-    venv_path = custom_tmp_path.venv_path / "venv4.1.1"
-
-    create_pytest_report(venv_path, input_path, success=2, failed=2)
-    create_pytest_report(venv_path, input_path, success=1, failed=1)
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=2, failed=2)
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=1, failed=1)
     phm.main(
         [
             "--input",
-            str(input_path),
+            str(custom_tmp_path.input_path),
             "-o",
-            str(file_name),
+            str(custom_tmp_path.result_file_name),
             "-t",
             "html_report"
 
         ]
     )
-    with open(file_name, "r") as f:
+    with open(custom_tmp_path.result_file_name, "r") as f:
         html_content: str = f.read()
 
     soup = BeautifulSoup(html_content, "html.parser")
@@ -133,23 +109,17 @@ def test_the_number_of_failures_indicated_in_the_report(custom_tmp_path, element
     ("4.1.1")   # test case 2
 
 ])
-def test_checking_the_number_of_failed_and_success_records(custom_tmp_path,payTest):
-    subfolder: pathlib.Path = custom_tmp_path.tmp_path / "results"
-    subfolder.mkdir(exist_ok=True, parents=True)
-    file_name: pathlib.Path = subfolder / "result.html"
-
-    input_path = custom_tmp_path.tmp_path / "input_reports"
-    input_path.mkdir(exist_ok=True)
+def test_checking_the_number_of_failed_and_success_records(custom_tmp_path: TestPath ,payTest):
     venv_path = custom_tmp_path.venv_path / f"venv{payTest}"
 
-    create_pytest_report(venv_path, input_path, success=2, failed=2)
-    create_pytest_report(venv_path, input_path, success=1, failed=1)
+    create_pytest_report(venv_path, custom_tmp_path.input_path, success=2, failed=2)
+    create_pytest_report(venv_path, custom_tmp_path.input_path, success=1, failed=1)
     phm.main(
         [
             "--input",
-            str(input_path),
+            str(custom_tmp_path.input_path),
             "-o",
-            str(file_name),
+            str(custom_tmp_path.result_file_name),
             "-t",
             "html_report"
 
@@ -157,7 +127,7 @@ def test_checking_the_number_of_failed_and_success_records(custom_tmp_path,payTe
     )
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    file_path = f'file://{file_name}'
+    file_path = f'file://{custom_tmp_path.result_file_name}'
     driver.get(file_path)
 
     elements_failed = driver.find_elements(By.CSS_SELECTOR, ".results-table-row.failed")

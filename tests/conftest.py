@@ -146,6 +146,7 @@ class TestPath:
     """Class for keeping track of an item in inventory."""
     venv_path: pathlib.Path
     venv_path_4: pathlib.Path
+    venv_path_3: pathlib.Path
     tmp_path: pathlib.Path
     input_path: pathlib.Path
     result_file_name: pathlib.Path
@@ -154,13 +155,14 @@ class TestPath:
 @pytest.fixture(scope="function")
 def custom_tmp_path(venv: pathlib.Path, tmp_path: pathlib.Path):
     venv4 = venv / "venv4.1.1"
+    venv3 = venv/ "venv3.2.0"
     input_p = tmp_path / "input_reports"
 
     subfolder: pathlib.Path = tmp_path / "results"
     subfolder.mkdir(parents=True)
 
     file_name: pathlib.Path = subfolder / "result.html"
-    ret: TestPath = TestPath(venv, venv4, tmp_path,input_p,file_name)
+    ret: TestPath = TestPath(venv, venv4, venv3, tmp_path,input_p,file_name)
 
     input_p.mkdir(exist_ok=True)
 
