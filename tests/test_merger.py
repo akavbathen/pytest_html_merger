@@ -238,4 +238,8 @@ def test_Creating_and_testing_Skip(custom_tmp_path):
     file_path = f'file://{custom_tmp_path.result_file_name}'
     driver.get(file_path)
 
+    c_element = driver.find_element(By.CLASS_NAME,"skipped")
+    text_c_element = c_element.text
+    number_of_test = text_c_element.split()[0]
+    assert int(number_of_test) == 3
 
