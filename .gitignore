@@ -8,3 +8,4 @@
 .idea/pytest_html_merger.iml
 .idea/vcs.xml
 /bathen
+*.log

@@ -9,6 +9,27 @@ from dataclasses import dataclass
 import pytest
 
 
+def create_eror_tests(eror: int, filepath: pathlib.Path):
+    content = """
+import pytest
+
+"""
+    b = """
+def test_conditional_error():
+    number: int = 
+
+ """
+
+    for i in range(eror):
+        content += b.replace("test_number", f"test_number_{i}")
+
+    with open(str(filepath), 'w') as file:
+        file.write(content)
+
+
+
+
+
 def create_skip_test(skip: int, filepath: pathlib.Path):
     content = """
 import pytest
@@ -71,7 +92,7 @@ def create_folder_name(base_name, num_letters=5):
     return folder_name
 
 
-def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, success: int=0, failed: int=0, skip: int=0):
+def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, success: int=0, failed: int=0, skip: int=0, eror: int=0):
     base_folder_name = "tests"
     test_path: pathlib.Path = report_path / base_folder_name
     test_path.mkdir(exist_ok=True)
@@ -80,6 +101,7 @@ def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, suc
     random_path: pathlib.Path = test_path / new_folder_name
     random_path.mkdir()
 
+    create_eror_tests(eror,random_path / "test_eror.py")
     create_skip_test(skip, random_path / "test_skip.py")
     create_positive_tests(success, random_path / "test_pos.py")
     create_negative_tests(failed, random_path / "test_neg.py")

@@ -243,3 +243,26 @@ def test_Creating_and_testing_Skip(custom_tmp_path):
     number_of_test = text_c_element.split()[0]
     assert int(number_of_test) == 3
 
+def test_Creating_and_testing_Eror(custom_tmp_path):
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=1, failed=1, skip=1, eror=1)
+    create_pytest_report(custom_tmp_path.venv_path_4, custom_tmp_path.input_path, success=1, failed=1, skip=2, eror=1)
+    phm.main(
+        [
+            "--input",
+            str(custom_tmp_path.input_path),
+            "-o",
+            str(custom_tmp_path.result_file_name),
+            "-t",
+            "html_report"
+
+        ]
+    )
+
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    file_path = f'file://{custom_tmp_path.result_file_name}'
+    driver.get(file_path)
+
+    e_element = driver.find_element(By.CLASS_NAME,"error")
+    text_c_element = e_element.text
+    number_of_test = text_c_element.split()[0]
+    assert int(number_of_test) == 2
