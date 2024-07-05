@@ -71,7 +71,7 @@ def create_folder_name(base_name, num_letters=5):
     return folder_name
 
 
-def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, success: int, failed: int, skip: int):
+def create_pytest_report(venv_path: pathlib.Path, report_path: pathlib.Path, success: int=0, failed: int=0, skip: int=0):
     base_folder_name = "tests"
     test_path: pathlib.Path = report_path / base_folder_name
     test_path.mkdir(exist_ok=True)
