@@ -18,6 +18,10 @@ import pytest_html_merger.version as version_mod
 CHECKBOX_REGEX = r"^(?P<num>0|[1-9]\d*) (?P<txt1>.*)"
 
 
+def open_utf8(*args, **kwargs):
+    return open(*args, **kwargs, encoding="utf-8")
+
+
 def merge_html_files(in_path: str, out_path: str, title: str):
     paths = get_html_files(in_path, out_path)
     if not paths:
@@ -26,7 +30,10 @@ def merge_html_files(in_path: str, out_path: str, title: str):
     assets_dir_path = get_assets_path(in_path)
 
     first_file_path = paths.pop(0)
-    first_file = BeautifulSoup("".join(open(first_file_path)), features="html.parser")
+    first_file = BeautifulSoup(
+        "".join(open_utf8(first_file_path)),
+        features="html.parser"
+    )
 
     try:
         first_file.find("link").decompose()
@@ -94,7 +101,10 @@ def merge_html_files(in_path: str, out_path: str, title: str):
         f_data_dict["tests"] = {f"{suffix}:{key}": value for key, value in f_data_dict["tests"].items()}
 
     for path in paths:
-        cur_file = BeautifulSoup("".join(open(path)), features="html.parser")
+        cur_file = BeautifulSoup(
+            "".join(open_utf8(path)),
+            features="html.parser"
+        )
 
         if html_ver < version.parse("4.0.0rc"):
             tbody_res = cur_file.find_all("tbody", {"class": "results-table-row"})
@@ -136,8 +146,9 @@ def merge_html_files(in_path: str, out_path: str, title: str):
     for cb_type in cb_types:
         set_checkbox_value(first_file, cb_type, cb_types[cb_type])
 
-    with open(out_path, "w") as f:
-        f.write(str(first_file))
+    summary_file_content = first_file.encode(formatter="html").decode()
+    with open_utf8(out_path, "w") as f:
+        f.write(summary_file_content)
 
 
 def get_test_count_and_duration(ps, html_ver):
@@ -208,6 +219,7 @@ def get_html_files(path, output_file_path):
         if output_file_path in res:
             continue
 
+        # we will test the file with default codepage
         tmp = BeautifulSoup("".join(open(res)), features="html.parser")
         p = tmp.find("p")
         if p and "Report generated on " in p.text:
